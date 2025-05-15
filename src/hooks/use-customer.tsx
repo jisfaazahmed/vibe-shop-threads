@@ -17,7 +17,18 @@ type CustomerProfile = {
   country: string | null;
 };
 
-type ProfileUpdateData = Omit<CustomerProfile, "id">;
+// Changed from Omit<CustomerProfile, "id"> to make all fields optional
+type ProfileUpdateData = {
+  first_name?: string | null;
+  last_name?: string | null;
+  phone?: string | null;
+  address_line1?: string | null;
+  address_line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+};
 
 export function useCustomer() {
   const { user } = useAuth();
