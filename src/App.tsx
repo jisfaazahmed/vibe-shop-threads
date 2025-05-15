@@ -16,6 +16,7 @@ import AboutPage from "./pages/AboutPage";
 import BlogPage from "./pages/BlogPage";
 import BlogDetailPage from "./pages/BlogDetailPage";
 import AccountPage from "./pages/AccountPage";
+import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ const App = () => (
               <Route path="/blog" element={<BlogPage />} />
               <Route path="/blog/:id" element={<BlogDetailPage />} />
               <Route path="/account" element={<AccountPage />} />
+              <Route path="/admin" element={<AdminPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
