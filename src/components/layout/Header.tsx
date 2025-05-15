@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Menu, Search, ShoppingCart, User, X } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -13,6 +14,7 @@ import {
 
 const Header: React.FC = () => {
   const { getCartItemCount } = useCart();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
@@ -76,8 +78,11 @@ const Header: React.FC = () => {
 
             {/* User Account */}
             <Link to="/account">
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="relative">
                 <User className="h-5 w-5" />
+                {user && (
+                  <span className="absolute -top-1 -right-1 bg-green-500 w-2 h-2 rounded-full"></span>
+                )}
               </Button>
             </Link>
 
@@ -143,6 +148,16 @@ const Header: React.FC = () => {
                         {link.name}
                       </Link>
                     ))}
+                    <Link
+                      to="/account"
+                      className="text-base font-medium py-2 hover:text-brand-purple transition flex items-center gap-2"
+                    >
+                      <User className="h-4 w-4" /> 
+                      Account
+                      {user && (
+                        <span className="bg-green-500 w-2 h-2 rounded-full"></span>
+                      )}
+                    </Link>
                   </nav>
                 </div>
               </SheetContent>
