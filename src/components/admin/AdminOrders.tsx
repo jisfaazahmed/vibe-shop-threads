@@ -58,7 +58,14 @@ const AdminOrders = () => {
 
       // For each order, fetch order items
       const ordersWithItems = await Promise.all(
-        ordersData.map(async (order) => {
+        (ordersData || []).map(async (order) => {
+          // Handle potentially null customer data
+          const customer = order.customer || {
+            first_name: null,
+            last_name: null,
+            email: null
+          };
+
           const { data: itemsData, error: itemsError } = await supabase
             .from("order_items")
             .select(`
@@ -71,14 +78,18 @@ const AdminOrders = () => {
           
           if (itemsError) {
             console.error(`Error fetching order items for order ${order.id}:`, itemsError);
-            return { ...order, items: [] };
+            return { ...order, customer, items: [] };
           }
           
-          return { ...order, items: itemsData || [] };
+          return { 
+            ...order, 
+            customer,
+            items: itemsData || [] 
+          };
         })
       );
       
-      return ordersWithItems || [];
+      return ordersWithItems;
     },
   });
 

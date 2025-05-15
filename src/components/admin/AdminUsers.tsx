@@ -35,13 +35,11 @@ const AdminUsers = () => {
         throw authError;
       }
       
-      // Then get their emails from auth.users
-      // In a real application, we would need a Supabase Edge Function with
-      // service role to access auth.users table, but for this prototype
-      // we'll just fetch the customer profiles
-      
+      // Transform the data to ensure it matches our expected type
       return authUsers.map(customer => ({
         ...customer,
+        // Default values for potentially missing fields
+        is_admin: customer.is_admin || false,
         email: customer.email || "No email available",
       })) || [];
     },
