@@ -4,31 +4,31 @@ import React from "react";
 const teamMembers = [
   {
     id: 1,
-    name: "Alex Chen",
+    name: "Jisfaaz",
     role: "Founder & Creative Director",
-    bio: "With 10+ years in fashion design, Alex founded ThreadVibe to merge premium quality with sustainable practices.",
-    image: "https://i.pravatar.cc/300?img=11",
+    bio: "With 10+ years in fashion design, Jisfaaz founded ThreadVibe to merge premium quality with sustainable practices.",
+    image: "https://i.postimg.cc/wTvhf43H/Screenshot-2025-05-16-014402.png",
   },
   {
     id: 2,
-    name: "Jordan Taylor",
+    name: "Shazan",
     role: "Head of Production",
-    bio: "Jordan ensures our manufacturing processes meet the highest ethical and environmental standards.",
-    image: "https://i.pravatar.cc/300?img=12",
+    bio: "Shazan ensures our manufacturing processes meet the highest ethical and environmental standards.",
+    image: "https://i.postimg.cc/NMdKRY6X/Screenshot-2025-05-16-014517.png",
   },
   {
     id: 3,
-    name: "Morgan Lee",
+    name: "Samhan",
     role: "Lead Designer",
-    bio: "Morgan brings ThreadVibe designs to life with a perfect blend of current trends and timeless style.",
-    image: "https://i.pravatar.cc/300?img=13",
+    bio: "Samhan brings ThreadVibe designs to life with a perfect blend of current trends and timeless style.",
+    image: "https://i.postimg.cc/C15hT88Z/Screenshot-2025-05-17-001047.png",
   },
   {
     id: 4,
-    name: "Riley Johnson",
+    name: "Hussain",
     role: "Sustainability Officer",
-    bio: "Riley works to continuously improve our eco-friendly practices across all aspects of the business.",
-    image: "https://i.pravatar.cc/300?img=14",
+    bio: "Hussain works to continuously improve our eco-friendly practices across all aspects of the business.",
+    image: "https://i.postimg.cc/tCKY3BxB/Screenshot-2025-05-16-014623.png",
   },
 ];
 
