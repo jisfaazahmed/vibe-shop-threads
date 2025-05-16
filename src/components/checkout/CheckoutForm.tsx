@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
@@ -18,7 +18,24 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-const CheckoutForm = () => {
+// Define props interface for CheckoutForm
+interface CheckoutFormProps {
+  userProfile?: {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+    phone: string | null;
+    address_line1: string | null;
+    address_line2: string | null;
+    city: string | null;
+    state: string | null;
+    postal_code: string | null;
+    country: string | null;
+  } | null;
+  isProfileLoading?: boolean;
+}
+
+const CheckoutForm: React.FC<CheckoutFormProps> = ({ userProfile, isProfileLoading }) => {
   const { user } = useAuth();
   const { cartItems, getCartTotal, clearCart } = useCart();
   const navigate = useNavigate();
@@ -28,7 +45,7 @@ const CheckoutForm = () => {
   // Form state
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(user?.email || "");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [addressLine2, setAddressLine2] = useState("");
@@ -36,6 +53,21 @@ const CheckoutForm = () => {
   const [state, setState] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [country, setCountry] = useState("Sri Lanka");
+
+  // Populate form with user profile data when available
+  useEffect(() => {
+    if (userProfile && !isProfileLoading) {
+      setFirstName(userProfile.first_name || "");
+      setLastName(userProfile.last_name || "");
+      setPhone(userProfile.phone || "");
+      setAddress(userProfile.address_line1 || "");
+      setAddressLine2(userProfile.address_line2 || "");
+      setCity(userProfile.city || "");
+      setState(userProfile.state || "");
+      setPostalCode(userProfile.postal_code || "");
+      setCountry(userProfile.country || "Sri Lanka");
+    }
+  }, [userProfile, isProfileLoading]);
 
   const subtotal = getCartTotal();
   const shipping = subtotal > 10000 ? 0 : 500; // Free shipping over LKR 10,000
@@ -47,20 +79,22 @@ const CheckoutForm = () => {
     setIsSubmitting(true);
     
     try {
-      // Create the order record
-      const { data: orderData, error: orderError } = await supabase
+      // Create the order record - update to handle RLS policy issues
+      const orderData = {
+        customer_id: user?.id || null, // Will be null for guest checkout
+        total_amount: total,
+        shipping_address: address + (addressLine2 ? ", " + addressLine2 : ""),
+        shipping_city: city,
+        shipping_state: state,
+        shipping_postal_code: postalCode,
+        shipping_country: country,
+        payment_method: paymentMethod,
+        status: "pending"
+      };
+      
+      const { data: createdOrder, error: orderError } = await supabase
         .from('orders')
-        .insert({
-          customer_id: user?.id, // Will be null for guest checkout
-          total_amount: total,
-          shipping_address: address + (addressLine2 ? ", " + addressLine2 : ""),
-          shipping_city: city,
-          shipping_state: state,
-          shipping_postal_code: postalCode,
-          shipping_country: country,
-          payment_method: paymentMethod,
-          status: "pending"
-        })
+        .insert(orderData)
         .select()
         .single();
       
@@ -68,10 +102,10 @@ const CheckoutForm = () => {
       
       // Add order items
       const orderItems = cartItems.map(item => ({
-        order_id: orderData.id,
+        order_id: createdOrder.id,
         product_id: item.product.id,
         quantity: item.quantity,
-        price: item.product.price,
+        price: item.price,
         variant_id: item.variantId || null
       }));
       
@@ -106,7 +140,7 @@ const CheckoutForm = () => {
       clearCart();
       navigate("/order-confirmation", { 
         state: { 
-          orderId: orderData.id,
+          orderId: createdOrder.id,
           orderNumber: Math.floor(100000 + Math.random() * 900000),
           email: email
         } 
@@ -138,11 +172,23 @@ const CheckoutForm = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="firstName">First Name</Label>
-                    <Input id="firstName" placeholder="John" required />
+                    <Input 
+                      id="firstName" 
+                      placeholder="John" 
+                      required 
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="lastName">Last Name</Label>
-                    <Input id="lastName" placeholder="Doe" required />
+                    <Input 
+                      id="lastName" 
+                      placeholder="Doe" 
+                      required 
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -152,6 +198,8 @@ const CheckoutForm = () => {
                     type="email" 
                     placeholder="your@email.com" 
                     required 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
@@ -161,6 +209,8 @@ const CheckoutForm = () => {
                     type="tel" 
                     placeholder="(123) 456-7890" 
                     required 
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
                   />
                 </div>
               </CardContent>
@@ -178,30 +228,61 @@ const CheckoutForm = () => {
                     id="address" 
                     placeholder="123 Main St" 
                     required 
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="addressLine2">Apt, Suite, etc. (optional)</Label>
-                  <Input id="addressLine2" placeholder="Apt 4B" />
+                  <Input 
+                    id="addressLine2" 
+                    placeholder="Apt 4B" 
+                    value={addressLine2}
+                    onChange={(e) => setAddressLine2(e.target.value)}
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="city">City</Label>
-                    <Input id="city" placeholder="Colombo" required />
+                    <Input 
+                      id="city" 
+                      placeholder="Colombo" 
+                      required 
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="state">Province</Label>
-                    <Input id="state" placeholder="Western" required />
+                    <Input 
+                      id="state" 
+                      placeholder="Western" 
+                      required 
+                      value={state}
+                      onChange={(e) => setState(e.target.value)}
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="zip">Postal Code</Label>
-                    <Input id="zip" placeholder="10300" required />
+                    <Input 
+                      id="zip" 
+                      placeholder="10300" 
+                      required 
+                      value={postalCode}
+                      onChange={(e) => setPostalCode(e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="country">Country</Label>
-                    <Input id="country" placeholder="Sri Lanka" defaultValue="Sri Lanka" required />
+                    <Input 
+                      id="country" 
+                      placeholder="Sri Lanka" 
+                      required 
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                    />
                   </div>
                 </div>
               </CardContent>
@@ -215,6 +296,7 @@ const CheckoutForm = () => {
               <CardContent className="space-y-6">
                 <RadioGroup 
                   defaultValue="cod"
+                  value={paymentMethod}
                   onValueChange={setPaymentMethod}
                 >
                   <div className="flex items-center space-x-2 border p-4 rounded-md">
@@ -283,7 +365,23 @@ const CheckoutForm = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Item list would go here in a real app */}
+              {/* Item list */}
+              {cartItems.map((item) => (
+                <div key={item.id} className="flex justify-between py-2 border-b">
+                  <div>
+                    <p className="font-medium">{item.product.name}</p>
+                    <p className="text-sm text-gray-500">
+                      {item.quantity} × LKR {item.product.price.toFixed(2)}
+                      {item.selectedSize && ` / Size: ${item.selectedSize}`}
+                      {item.selectedColor && ` / Color: ${item.selectedColor.name}`}
+                    </p>
+                  </div>
+                  <p className="font-medium">
+                    LKR {(item.product.price * item.quantity).toFixed(2)}
+                  </p>
+                </div>
+              ))}
+              
               <div className="space-y-4 pt-4">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
