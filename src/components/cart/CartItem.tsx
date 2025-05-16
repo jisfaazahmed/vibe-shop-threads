@@ -47,7 +47,7 @@ const CartItem: React.FC<CartItemProps> = ({
       <div className="flex flex-1 flex-col">
         <div className="flex justify-between text-base font-medium">
           <h3>{name}</h3>
-          <p className="ml-4">${(price * quantity).toFixed(2)}</p>
+          <p className="ml-4">LKR {(price * quantity).toFixed(2)}</p>
         </div>
         
         <p className="mt-1 text-sm text-gray-500">
