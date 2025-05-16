@@ -54,10 +54,8 @@ const AdminProducts = () => {
         .eq("id", productId);
       
       if (error) {
-        toast({
-          title: "Deletion failed",
-          description: error.message,
-        });
+        // Using toast.error instead of toast with a title property
+        toast.error("Deletion failed: " + error.message);
         throw error;
       }
       
