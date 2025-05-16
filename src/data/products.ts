@@ -18,7 +18,7 @@ export const products: Product[] = [
     id: "1",
     name: "Urban Classic Tee",
     description: "A timeless classic tee with a modern fit. Made from 100% organic cotton for ultimate comfort and breathability.",
-    price: 29.99,
+    price: 2999,
     colors: [
       { name: "Black", hex: "#000000" },
       { name: "White", hex: "#FFFFFF" },
@@ -39,7 +39,7 @@ export const products: Product[] = [
     id: "2",
     name: "Graphic Print Tee",
     description: "Express your style with our eye-catching graphic print tee. Features original artwork on premium cotton blend.",
-    price: 34.99,
+    price: 3499,
     colors: [
       { name: "White", hex: "#FFFFFF" },
       { name: "Light Gray", hex: "#D3D3D3" }
@@ -59,7 +59,7 @@ export const products: Product[] = [
     id: "3",
     name: "Vintage Wash Tee",
     description: "Our vintage wash process gives this tee a perfectly broken-in look and ultra-soft feel from day one.",
-    price: 32.99,
+    price: 3299,
     colors: [
       { name: "Washed Blue", hex: "#A0B8D0" },
       { name: "Washed Green", hex: "#A0D0B8" },
@@ -80,7 +80,7 @@ export const products: Product[] = [
     id: "4",
     name: "Minimal Logo Tee",
     description: "Clean and understated with our minimal logo design. Perfect for everyday wear and easy styling.",
-    price: 24.99,
+    price: 2499,
     colors: [
       { name: "Black", hex: "#000000" },
       { name: "White", hex: "#FFFFFF" },
@@ -101,7 +101,7 @@ export const products: Product[] = [
     id: "5",
     name: "Eco Heavyweight Tee",
     description: "Our heavyweight eco tee is crafted from sustainable materials with a substantial feel and premium finish.",
-    price: 39.99,
+    price: 3999,
     colors: [
       { name: "Forest Green", hex: "#228B22" },
       { name: "Earth Brown", hex: "#8B4513" },
@@ -122,7 +122,7 @@ export const products: Product[] = [
     id: "6",
     name: "Color Block Tee",
     description: "Stand out with our bold color block design. Features contrasting panels and a relaxed contemporary fit.",
-    price: 36.99,
+    price: 3699,
     colors: [
       { name: "Blue/White", hex: "#0000FF" },
       { name: "Black/Red", hex: "#FF0000" }
@@ -142,7 +142,7 @@ export const products: Product[] = [
     id: "7",
     name: "Essential Pocket Tee",
     description: "The perfect basic with an added chest pocket detail. Made from soft cotton with a relaxed fit.",
-    price: 22.99,
+    price: 2299,
     colors: [
       { name: "White", hex: "#FFFFFF" },
       { name: "Black", hex: "#000000" },
@@ -164,7 +164,7 @@ export const products: Product[] = [
     id: "8",
     name: "Striped Sailor Tee",
     description: "Classic striped pattern inspired by traditional sailor uniforms. Made from medium-weight cotton.",
-    price: 28.99,
+    price: 2899,
     colors: [
       { name: "Navy/White", hex: "#000080" },
       { name: "Black/White", hex: "#000000" }

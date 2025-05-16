@@ -79,7 +79,9 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ userProfile, isProfileLoadi
     setIsSubmitting(true);
     
     try {
-      // Create the order record - updated to fix RLS policy issues
+      console.log("Cart items for order:", cartItems);
+      
+      // Create the order record
       const orderData = {
         customer_id: user?.id, // Don't use || null as it might convert empty string to null
         total_amount: total,
@@ -98,22 +100,36 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ userProfile, isProfileLoadi
         .select()
         .single();
       
-      if (orderError) throw orderError;
+      if (orderError) {
+        console.error("Error creating order:", orderError);
+        throw orderError;
+      }
       
-      // Add order items
+      if (!createdOrder) {
+        throw new Error("No order was created");
+      }
+
+      console.log("Order created:", createdOrder);
+      
+      // Add order items - ensure product IDs are properly formatted as UUID strings
       const orderItems = cartItems.map(item => ({
         order_id: createdOrder.id,
-        product_id: item.product.id,
+        product_id: String(item.product.id), // Convert to string in case it's a number
         quantity: item.quantity,
-        price: item.price,
+        price: item.price || item.product.price,
         variant_id: item.variantId || null
       }));
+      
+      console.log("Order items being inserted:", orderItems);
       
       const { error: itemsError } = await supabase
         .from('order_items')
         .insert(orderItems);
         
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        console.error("Error creating order items:", itemsError);
+        throw itemsError;
+      }
       
       // Update customer information if logged in
       if (user) {
@@ -147,7 +163,8 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ userProfile, isProfileLoadi
         state: { 
           orderId: createdOrder.id,
           orderNumber: Math.floor(100000 + Math.random() * 900000),
-          email: email
+          email: email,
+          paymentMethod: paymentMethod
         } 
       });
     } catch (error) {
