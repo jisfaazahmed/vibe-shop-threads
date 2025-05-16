@@ -18,6 +18,15 @@ type Order = {
   shipping_state: string;
   shipping_postal_code: string;
   shipping_country: string;
+  items: {
+    id: string;
+    product_id: string;
+    quantity: number;
+    price: number;
+    product: {
+      name: string;
+    };
+  }[];
 };
 
 const AccountOrders = () => {
@@ -28,9 +37,19 @@ const AccountOrders = () => {
     queryFn: async (): Promise<Order[]> => {
       if (!user) return [];
       
+      // Get orders with their items
       const { data, error } = await supabase
         .from("orders")
-        .select("*")
+        .select(`
+          *,
+          items:order_items(
+            id,
+            product_id,
+            quantity,
+            price,
+            product:products(name)
+          )
+        `)
         .eq("customer_id", user.id)
         .order("created_at", { ascending: false });
       
@@ -110,7 +129,7 @@ const AccountOrders = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Total</p>
-                  <p className="font-medium">${order.total_amount.toFixed(2)}</p>
+                  <p className="font-medium">LKR {order.total_amount.toFixed(2)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Status</p>
@@ -122,7 +141,23 @@ const AccountOrders = () => {
                   </Badge>
                 </div>
               </div>
-              <div className="border-t pt-4">
+              
+              {/* Order Items Section */}
+              <div className="border-t border-b py-4 mb-4">
+                <p className="text-sm text-gray-500 mb-2">Items</p>
+                <ul className="space-y-2">
+                  {order.items.map((item) => (
+                    <li key={item.id} className="text-sm">
+                      <div className="flex justify-between">
+                        <span>{item.product?.name || "Product"} × {item.quantity}</span>
+                        <span>LKR {item.price.toFixed(2)}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              
+              <div className="border-b pt-2 pb-4">
                 <p className="text-sm text-gray-500 mb-1">Shipping Address</p>
                 <p className="text-sm">
                   {order.shipping_address}, {order.shipping_city}, {order.shipping_state},{" "}

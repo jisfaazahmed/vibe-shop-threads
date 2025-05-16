@@ -2,11 +2,13 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "@/components/ui/sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   Card, 
   CardContent,
@@ -17,29 +19,104 @@ import {
 } from "@/components/ui/card";
 
 const CheckoutForm = () => {
-  const { getCartTotal, clearCart } = useCart();
+  const { user } = useAuth();
+  const { cartItems, getCartTotal, clearCart } = useCart();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("cod");
+  
+  // Form state
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [addressLine2, setAddressLine2] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [country, setCountry] = useState("Sri Lanka");
 
   const subtotal = getCartTotal();
   const shipping = subtotal > 10000 ? 0 : 500; // Free shipping over LKR 10,000
   const tax = subtotal * 0.08;
   const total = subtotal + shipping + tax;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Simulate processing delay
-    setTimeout(() => {
+    try {
+      // Create the order record
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          customer_id: user?.id, // Will be null for guest checkout
+          total_amount: total,
+          shipping_address: address + (addressLine2 ? ", " + addressLine2 : ""),
+          shipping_city: city,
+          shipping_state: state,
+          shipping_postal_code: postalCode,
+          shipping_country: country,
+          payment_method: paymentMethod,
+          status: "pending"
+        })
+        .select()
+        .single();
+      
+      if (orderError) throw orderError;
+      
+      // Add order items
+      const orderItems = cartItems.map(item => ({
+        order_id: orderData.id,
+        product_id: item.id,
+        quantity: item.quantity,
+        price: item.price,
+        variant_id: item.variantId || null
+      }));
+      
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+        
+      if (itemsError) throw itemsError;
+      
+      // Update customer information if logged in
+      if (user) {
+        await supabase
+          .from('customers')
+          .update({
+            first_name: firstName,
+            last_name: lastName,
+            phone,
+            address_line1: address,
+            address_line2: addressLine2,
+            city,
+            state,
+            postal_code: postalCode,
+            country
+          })
+          .eq('id', user.id);
+      }
+
+      // Success!
       toast.success("Your order has been placed successfully!", {
         description: "Check your email for order confirmation.",
       });
       clearCart();
-      navigate("/order-confirmation");
+      navigate("/order-confirmation", { 
+        state: { 
+          orderId: orderData.id,
+          orderNumber: Math.floor(100000 + Math.random() * 900000),
+          email: email
+        } 
+      });
+    } catch (error) {
+      console.error("Error placing order:", error);
+      toast.error("There was a problem processing your order. Please try again.");
+    } finally {
       setIsSubmitting(false);
-    }, 1500);
+    }
   };
 
   return (

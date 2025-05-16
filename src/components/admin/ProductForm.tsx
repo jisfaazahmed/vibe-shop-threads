@@ -1,247 +1,183 @@
-
-import React from "react";
-import { useMutation } from "@tanstack/react-query";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Product } from "@/data/products";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { toast } from "@/components/ui/sonner";
 
-type ProductFormProps = {
-  product?: {
-    id: string;
-    name: string;
-    description: string | null;
-    price: number;
-    stock: number;
-    featured: boolean;
-    category: string | null;
-  };
-  onSuccess: () => void;
-};
+interface ProductFormProps {
+  productId?: string;
+}
 
-const formSchema = z.object({
-  name: z.string().min(1, "Product name is required"),
-  description: z.string().optional().nullable(),
-  price: z.coerce.number().min(0.01, "Price must be greater than zero"),
-  stock: z.coerce.number().int().min(0, "Stock cannot be negative"),
-  featured: z.boolean().default(false),
-  category: z.string().optional().nullable(),
-});
+const ProductForm: React.FC<ProductFormProps> = ({ productId }) => {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("");
+  const [price, setPrice] = useState<number | "">("");
+  const [stock, setStock] = useState<number | "">("");
+  const [featured, setFeatured] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-const ProductForm: React.FC<ProductFormProps> = ({ product, onSuccess }) => {
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: product ? {
-      name: product.name,
-      description: product.description || "",
-      price: product.price,
-      stock: product.stock,
-      featured: product.featured,
-      category: product.category || "",
-    } : {
-      name: "",
-      description: "",
-      price: 0,
-      stock: 0,
-      featured: false,
-      category: "",
-    },
-  });
+  useEffect(() => {
+    if (productId) {
+      // Fetch product details for editing
+      supabase
+        .from("products")
+        .select("*")
+        .eq("id", productId)
+        .single()
+        .then(({ data, error }) => {
+          if (error) {
+            console.error("Error fetching product:", error);
+            toast.error("Failed to load product details");
+          } else if (data) {
+            setName(data.name);
+            setDescription(data.description || "");
+            setCategory(data.category || "");
+            setPrice(data.price);
+            setStock(data.stock);
+            setFeatured(data.featured || false);
+          }
+        });
+    }
+  }, [productId]);
 
-  const saveProduct = useMutation({
-    mutationFn: async (values: z.infer<typeof formSchema>) => {
-      // Clean up empty strings to be null for the database
-      const productData = {
-        ...values,
-        description: values.description || null,
-        category: values.category || null,
-      };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    try {
+      // Validate product data
+      if (!name || !price || !description || !category) {
+        toast.error("Please fill in all required fields");
+        setSubmitting(false);
+        return;
+      }
+
+      // Parse price as a number
+      const priceValue = parseFloat(price.toString());
       
-      if (product) {
+      // Create or update product
+      const productData = {
+        name,
+        description,
+        category,
+        price: priceValue,
+        stock: parseInt(stock.toString() || "0"),
+        featured
+      };
+
+      let result;
+      
+      if (productId) {
         // Update existing product
-        const { error } = await supabase
+        result = await supabase
           .from("products")
           .update(productData)
-          .eq("id", product.id);
-        
-        if (error) {
-          toast({
-            variant: "destructive",
-            title: "Update failed",
-            description: error.message,
-          });
-          throw error;
-        }
-        
-        toast({
-          title: "Product updated",
-          description: "Product has been updated successfully.",
-        });
+          .eq("id", productId);
       } else {
         // Create new product
-        const { error } = await supabase
+        result = await supabase
           .from("products")
-          .insert([productData]);
-        
-        if (error) {
-          toast({
-            variant: "destructive",
-            title: "Creation failed",
-            description: error.message,
-          });
-          throw error;
-        }
-        
-        toast({
-          title: "Product created",
-          description: "New product has been added successfully.",
-        });
+          .insert(productData);
       }
-    },
-    onSuccess: () => {
-      form.reset();
-      onSuccess();
-    },
-  });
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    saveProduct.mutate(values);
+      if (result.error) throw result.error;
+
+      toast.success(
+        `Product ${productId ? "updated" : "created"} successfully`
+      );
+      
+      // Reset form or navigate
+      if (!productId) {
+        // Reset form for new products
+        setName("");
+        setDescription("");
+        setCategory("");
+        setPrice(0);
+        setStock(0);
+        setFeatured(false);
+      }
+    } catch (error) {
+      console.error("Error saving product:", error);
+      toast.error("Failed to save product");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Product Name</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter product name" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+    <form onSubmit={handleSubmit} className="space-y-8">
+      <div>
+        <Label htmlFor="name">Name</Label>
+        <Input
+          type="text"
+          id="name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
         />
-        
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Textarea 
-                  placeholder="Enter product description" 
-                  {...field} 
-                  value={field.value || ""}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+      </div>
+      <div>
+        <Label htmlFor="description">Description</Label>
+        <Textarea
+          id="description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          required
         />
-        
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="price"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Price ($)</FormLabel>
-                <FormControl>
-                  <Input type="number" step="0.01" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="stock"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Stock</FormLabel>
-                <FormControl>
-                  <Input type="number" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        
-        <FormField
-          control={form.control}
-          name="category"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Category</FormLabel>
-              <FormControl>
-                <Input 
-                  placeholder="Enter product category" 
-                  {...field} 
-                  value={field.value || ""} 
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+      </div>
+      <div>
+        <Label htmlFor="category">Category</Label>
+        <Input
+          type="text"
+          id="category"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          required
         />
-        
-        <FormField
-          control={form.control}
-          name="featured"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel>Featured Product</FormLabel>
-                <p className="text-sm text-muted-foreground">
-                  This product will be displayed on the home page.
-                </p>
-              </div>
-            </FormItem>
-          )}
+      </div>
+      <div>
+        <Label htmlFor="price">Price</Label>
+        <Input
+          type="number"
+          id="price"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+          required
         />
-        
-        <div className="flex justify-end space-x-2 pt-4">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={() => form.reset()}
-          >
-            Reset
-          </Button>
-          <Button 
-            type="submit" 
-            disabled={saveProduct.isPending}
-          >
-            {saveProduct.isPending ? "Saving..." : product ? "Update Product" : "Create Product"}
-          </Button>
-        </div>
-      </form>
-    </Form>
+      </div>
+      <div>
+        <Label htmlFor="stock">Stock</Label>
+        <Input
+          type="number"
+          id="stock"
+          value={stock}
+          onChange={(e) => setStock(e.target.value)}
+        />
+      </div>
+      <div>
+        <Label htmlFor="featured">Featured</Label>
+        <Switch
+          id="featured"
+          checked={featured}
+          onCheckedChange={(checked) => setFeatured(checked)}
+        />
+      </div>
+      <Button type="submit" disabled={submitting}>
+        {submitting ? "Submitting..." : productId ? "Update Product" : "Create Product"}
+      </Button>
+    </form>
   );
 };
 

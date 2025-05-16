@@ -1,81 +1,88 @@
 
-import React from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "@/components/ui/sonner";
 
 type CustomerWithAuth = {
   id: string;
-  first_name: string | null;
-  last_name: string | null;
-  email: string | null;
-  phone: string | null;
+  first_name: string;
+  last_name: string;
+  email: string;
   is_admin: boolean;
-  created_at: string | null;
+  created_at: string;
+  phone: string;
+  address_line1: string;
+  address_line2: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country: string;
+  updated_at: string;
 };
 
 const AdminUsers = () => {
-  const queryClient = useQueryClient();
-
-  const { data: customers, isLoading } = useQuery({
-    queryKey: ["adminCustomers"],
+  const { data: users, isLoading, refetch } = useQuery({
+    queryKey: ["adminUsers"],
     queryFn: async (): Promise<CustomerWithAuth[]> => {
-      // Fetch all customers from the customers table
-      const { data: authUsers, error: authError } = await supabase
+      // First get customers
+      const { data: customers, error: customersError } = await supabase
         .from("customers")
-        .select("*");
-      
-      if (authError) {
-        console.error("Error fetching customers:", authError);
-        throw authError;
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (customersError) {
+        console.error("Error fetching customers:", customersError);
+        throw customersError;
       }
-      
-      // Transform the data to ensure it matches our expected type
-      return (authUsers || []).map(customer => ({
-        id: customer.id,
-        first_name: customer.first_name,
-        last_name: customer.last_name,
-        email: customer.email || null,
-        phone: customer.phone,
-        is_admin: customer.is_admin || false,
-        created_at: customer.created_at
-      }));
+
+      // Then fetch authentication info for each customer
+      const customersWithAuth = await Promise.all(
+        customers.map(async (customer) => {
+          // Get auth user data for email
+          const { data: authData, error: authError } = await supabase.auth.admin.getUserById(
+            customer.id
+          );
+
+          // If error or no data, use placeholder
+          const email = authError || !authData ? "unknown@example.com" : authData.user.email;
+
+          return {
+            ...customer,
+            email: email || "unknown@example.com",
+          };
+        })
+      );
+
+      return customersWithAuth;
     },
   });
 
-  const toggleAdminStatus = useMutation({
-    mutationFn: async ({ userId, isAdmin }: { userId: string; isAdmin: boolean }) => {
+  const toggleAdminStatus = async (userId: string, currentStatus: boolean) => {
+    try {
       const { error } = await supabase
         .from("customers")
-        .update({ is_admin: isAdmin })
+        .update({ is_admin: !currentStatus })
         .eq("id", userId);
-      
-      if (error) {
-        toast({
-          variant: "destructive",
-          title: "Update failed",
-          description: error.message,
-        });
-        throw error;
-      }
-      
-      toast({
-        title: "User updated",
-        description: `Admin status ${isAdmin ? 'granted' : 'revoked'} successfully.`,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["adminCustomers"] });
-    },
-  });
 
-  const handleToggleAdmin = (userId: string, currentStatus: boolean) => {
-    toggleAdminStatus.mutate({ userId, isAdmin: !currentStatus });
+      if (error) throw error;
+
+      toast.success(`User admin status updated successfully`);
+      refetch();
+    } catch (error) {
+      console.error("Error updating admin status:", error);
+      toast.error("Failed to update user admin status");
+    }
   };
 
   if (isLoading) {
@@ -89,53 +96,62 @@ const AdminUsers = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Manage Users</CardTitle>
+        <CardTitle>All Users</CardTitle>
+        <CardDescription>
+          Manage user accounts and admin privileges
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {customers && customers.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="p-2 text-left">Name</th>
-                    <th className="p-2 text-left">Email</th>
-                    <th className="p-2 text-left">Phone</th>
-                    <th className="p-2 text-left">Joined</th>
-                    <th className="p-2 text-center">Admin</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {customers.map((customer) => (
-                    <tr key={customer.id} className="border-b hover:bg-muted/50">
-                      <td className="p-2">
-                        {customer.first_name && customer.last_name 
-                          ? `${customer.first_name} ${customer.last_name}`
-                          : "Not provided"}
-                      </td>
-                      <td className="p-2">{customer.email || "—"}</td>
-                      <td className="p-2">{customer.phone || "—"}</td>
-                      <td className="p-2">
-                        {customer.created_at 
-                          ? format(new Date(customer.created_at), "MMM d, yyyy")
-                          : "—"}
-                      </td>
-                      <td className="p-2 text-center">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left py-3 px-4">Name</th>
+                <th className="text-left py-3 px-4">Email</th>
+                <th className="text-left py-3 px-4">Joined</th>
+                <th className="text-left py-3 px-4">Location</th>
+                <th className="text-center py-3 px-4">Admin</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users && users.length > 0 ? (
+                users.map((user) => (
+                  <tr key={user.id} className="border-b hover:bg-gray-50">
+                    <td className="py-4 px-4">
+                      {user.first_name || ""} {user.last_name || ""}
+                    </td>
+                    <td className="py-4 px-4">{user.email || "N/A"}</td>
+                    <td className="py-4 px-4">
+                      {user.created_at
+                        ? format(new Date(user.created_at), "MMM d, yyyy")
+                        : "N/A"}
+                    </td>
+                    <td className="py-4 px-4">
+                      {user.city && user.country
+                        ? `${user.city}, ${user.country}`
+                        : "N/A"}
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <div className="flex justify-center">
                         <Switch
-                          checked={customer.is_admin || false}
-                          onCheckedChange={() => handleToggleAdmin(customer.id, customer.is_admin || false)}
+                          checked={user.is_admin || false}
+                          onCheckedChange={() =>
+                            toggleAdminStatus(user.id, user.is_admin)
+                          }
                         />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="text-center py-10">
-              <p className="text-gray-500">No users found</p>
-            </div>
-          )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="py-10 text-center text-gray-500">
+                    No users found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </CardContent>
     </Card>

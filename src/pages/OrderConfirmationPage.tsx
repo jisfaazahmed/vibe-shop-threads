@@ -1,12 +1,17 @@
 
 import React from "react";
+import { useLocation, Link } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
 
 const OrderConfirmationPage = () => {
-  // Generate a random order number
-  const orderNumber = Math.floor(100000 + Math.random() * 900000);
+  const location = useLocation();
+  
+  // Get order details from location state or generate fallback values
+  const orderData = location.state || {};
+  const orderNumber = orderData.orderNumber || Math.floor(100000 + Math.random() * 900000);
+  const orderId = orderData.orderId || "unknown";
+  const email = orderData.email || "customer@example.com";
 
   return (
     <MainLayout>
@@ -41,12 +46,16 @@ const OrderConfirmationPage = () => {
                 <span className="font-medium">#{orderNumber}</span>
               </div>
               <div className="flex justify-between">
+                <span>Order ID:</span>
+                <span className="font-medium">{orderId}</span>
+              </div>
+              <div className="flex justify-between">
                 <span>Date:</span>
                 <span>{new Date().toLocaleDateString()}</span>
               </div>
               <div className="flex justify-between">
                 <span>Email:</span>
-                <span>customer@example.com</span>
+                <span>{email}</span>
               </div>
               <div className="flex justify-between">
                 <span>Payment Method:</span>
@@ -65,7 +74,7 @@ const OrderConfirmationPage = () => {
               <Link to="/products">Continue Shopping</Link>
             </Button>
             <Button variant="outline" asChild>
-              <Link to="/">Return to Home</Link>
+              <Link to="/account">View Your Orders</Link>
             </Button>
           </div>
         </div>
