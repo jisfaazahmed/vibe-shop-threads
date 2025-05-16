@@ -4,10 +4,13 @@ import { Product } from "@/data/products";
 import { toast } from "@/components/ui/sonner";
 
 interface CartItem {
+  id: string;
   product: Product;
   quantity: number;
   selectedSize: string;
   selectedColor: { name: string; hex: string };
+  price: number;
+  variantId?: string;
 }
 
 interface CartContextType {
@@ -38,7 +41,15 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       updatedCart[existingItemIndex].quantity += quantity;
       setCartItems(updatedCart);
     } else {
-      setCartItems([...cartItems, { product, quantity, selectedSize, selectedColor }]);
+      setCartItems([...cartItems, { 
+        id: product.id,
+        product, 
+        quantity, 
+        selectedSize, 
+        selectedColor,
+        price: product.price,
+        variantId: undefined
+      }]);
     }
     
     toast(`Added ${quantity} ${product.name} to cart`);

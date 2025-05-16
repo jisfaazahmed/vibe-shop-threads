@@ -69,9 +69,9 @@ const CheckoutForm = () => {
       // Add order items
       const orderItems = cartItems.map(item => ({
         order_id: orderData.id,
-        product_id: item.id,
+        product_id: item.product.id,
         quantity: item.quantity,
-        price: item.price,
+        price: item.product.price,
         variant_id: item.variantId || null
       }));
       

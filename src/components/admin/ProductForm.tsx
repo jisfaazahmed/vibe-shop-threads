@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -15,9 +16,11 @@ import { toast } from "@/components/ui/sonner";
 
 interface ProductFormProps {
   productId?: string;
+  product?: Product;
+  onSuccess?: () => void;
 }
 
-const ProductForm: React.FC<ProductFormProps> = ({ productId }) => {
+const ProductForm: React.FC<ProductFormProps> = ({ productId, product, onSuccess }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
@@ -49,8 +52,16 @@ const ProductForm: React.FC<ProductFormProps> = ({ productId }) => {
             setFeatured(data.featured || false);
           }
         });
+    } else if (product) {
+      // Use the provided product object
+      setName(product.name);
+      setDescription(product.description || "");
+      setCategory(product.category || "");
+      setPrice(product.price);
+      setStock(product.stock);
+      setFeatured(product.featured || false);
     }
-  }, [productId]);
+  }, [productId, product]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +76,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ productId }) => {
       }
 
       // Parse price as a number
-      const priceValue = parseFloat(price.toString());
+      const priceValue = typeof price === "string" ? parseFloat(price) : price;
       
       // Create or update product
       const productData = {
@@ -73,7 +84,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ productId }) => {
         description,
         category,
         price: priceValue,
-        stock: parseInt(stock.toString() || "0"),
+        stock: typeof stock === "string" ? parseInt(stock) : stock,
         featured
       };
 
@@ -108,12 +119,28 @@ const ProductForm: React.FC<ProductFormProps> = ({ productId }) => {
         setStock(0);
         setFeatured(false);
       }
+
+      // Call the onSuccess callback if provided
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error) {
       console.error("Error saving product:", error);
       toast.error("Failed to save product");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // Handle string to number conversions for inputs
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setPrice(value === "" ? "" : parseFloat(value));
+  };
+
+  const handleStockChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setStock(value === "" ? "" : parseInt(value));
   };
 
   return (
@@ -153,7 +180,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ productId }) => {
           type="number"
           id="price"
           value={price}
-          onChange={(e) => setPrice(e.target.value)}
+          onChange={handlePriceChange}
           required
         />
       </div>
@@ -163,7 +190,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ productId }) => {
           type="number"
           id="stock"
           value={stock}
-          onChange={(e) => setStock(e.target.value)}
+          onChange={handleStockChange}
         />
       </div>
       <div>

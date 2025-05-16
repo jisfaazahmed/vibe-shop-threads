@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { Plus, Edit, Trash2 } from "lucide-react";
 import ProductForm from "./ProductForm";
 
@@ -61,10 +61,7 @@ const AdminProducts = () => {
         throw error;
       }
       
-      toast({
-        title: "Product deleted",
-        description: "The product has been removed successfully.",
-      });
+      toast.success("Product deleted successfully");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["adminProducts"] });
@@ -127,7 +124,7 @@ const AdminProducts = () => {
                   {products.map((product) => (
                     <tr key={product.id} className="border-b hover:bg-muted/50">
                       <td className="p-2">{product.name}</td>
-                      <td className="p-2">${product.price.toFixed(2)}</td>
+                      <td className="p-2">LKR {product.price.toFixed(2)}</td>
                       <td className="p-2">{product.stock}</td>
                       <td className="p-2">{product.category || "—"}</td>
                       <td className="p-2 text-right">
@@ -147,6 +144,7 @@ const AdminProducts = () => {
                             </DialogHeader>
                             {editingProduct && (
                               <ProductForm 
+                                productId={editingProduct.id}
                                 product={editingProduct}
                                 onSuccess={() => {
                                   setEditingProduct(null);
