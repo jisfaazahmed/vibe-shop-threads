@@ -50,7 +50,7 @@ const OrderConfirmationPage = () => {
               </div>
               <div className="flex justify-between">
                 <span>Payment Method:</span>
-                <span>Credit Card</span>
+                <span>Cash on Delivery</span>
               </div>
             </div>
           </div>

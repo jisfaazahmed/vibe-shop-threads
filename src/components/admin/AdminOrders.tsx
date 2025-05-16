@@ -8,6 +8,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 
+type OrderItem = {
+  id: string;
+  product_id: string | null;
+  quantity: number;
+  price: number;
+  product: {
+    name: string;
+  } | null;
+};
+
 type Order = {
   id: string;
   created_at: string;
@@ -18,18 +28,8 @@ type Order = {
     first_name: string | null;
     last_name: string | null;
     email: string | null;
-  } | null;
+  };
   items: OrderItem[];
-};
-
-type OrderItem = {
-  id: string;
-  product_id: string;
-  quantity: number;
-  price: number;
-  product: {
-    name: string;
-  } | null;
 };
 
 const AdminOrders = () => {
@@ -59,7 +59,7 @@ const AdminOrders = () => {
       // For each order, fetch order items
       const ordersWithItems = await Promise.all(
         (ordersData || []).map(async (order) => {
-          // Handle potentially null customer data
+          // Create default customer object to handle potential null values
           const customer = order.customer || {
             first_name: null,
             last_name: null,
@@ -78,7 +78,11 @@ const AdminOrders = () => {
           
           if (itemsError) {
             console.error(`Error fetching order items for order ${order.id}:`, itemsError);
-            return { ...order, customer, items: [] };
+            return { 
+              ...order, 
+              customer,
+              items: [] 
+            };
           }
           
           return { 
@@ -148,7 +152,7 @@ const AdminOrders = () => {
                       <td className="p-2">
                         {format(new Date(order.created_at), "MMM d, yyyy")}
                       </td>
-                      <td className="p-2">${order.total_amount.toFixed(2)}</td>
+                      <td className="p-2">LKR {order.total_amount.toFixed(2)}</td>
                       <td className="p-2">
                         <Badge
                           className={`font-medium ${getStatusColor(order.status)}`}
@@ -179,7 +183,7 @@ const AdminOrders = () => {
                                     <p><span className="font-medium">Order ID:</span> {selectedOrder.id}</p>
                                     <p><span className="font-medium">Date:</span> {format(new Date(selectedOrder.created_at), "MMM d, yyyy h:mm a")}</p>
                                     <p><span className="font-medium">Status:</span> {selectedOrder.status}</p>
-                                    <p><span className="font-medium">Total:</span> ${selectedOrder.total_amount.toFixed(2)}</p>
+                                    <p><span className="font-medium">Total:</span> LKR {selectedOrder.total_amount.toFixed(2)}</p>
                                   </div>
                                   <div>
                                     <h3 className="font-semibold mb-2">Customer Information</h3>
@@ -206,13 +210,13 @@ const AdminOrders = () => {
                                         <tr key={item.id} className="border-b">
                                           <td className="p-2">{item.product?.name || `Product ID: ${item.product_id}`}</td>
                                           <td className="p-2 text-center">{item.quantity}</td>
-                                          <td className="p-2 text-right">${item.price.toFixed(2)}</td>
-                                          <td className="p-2 text-right">${(item.price * item.quantity).toFixed(2)}</td>
+                                          <td className="p-2 text-right">LKR {item.price.toFixed(2)}</td>
+                                          <td className="p-2 text-right">LKR {(item.price * item.quantity).toFixed(2)}</td>
                                         </tr>
                                       ))}
                                       <tr className="font-medium">
                                         <td colSpan={3} className="p-2 text-right">Total:</td>
-                                        <td className="p-2 text-right">${selectedOrder.total_amount.toFixed(2)}</td>
+                                        <td className="p-2 text-right">LKR {selectedOrder.total_amount.toFixed(2)}</td>
                                       </tr>
                                     </tbody>
                                   </table>

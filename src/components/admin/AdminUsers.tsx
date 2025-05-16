@@ -13,10 +13,10 @@ type CustomerWithAuth = {
   id: string;
   first_name: string | null;
   last_name: string | null;
-  email: string;
+  email: string | null;
   phone: string | null;
   is_admin: boolean;
-  created_at: string;
+  created_at: string | null;
 };
 
 const AdminUsers = () => {
@@ -25,7 +25,7 @@ const AdminUsers = () => {
   const { data: customers, isLoading } = useQuery({
     queryKey: ["adminCustomers"],
     queryFn: async (): Promise<CustomerWithAuth[]> => {
-      // First, get all users from auth schema (this requires admin privileges)
+      // Fetch all customers from the customers table
       const { data: authUsers, error: authError } = await supabase
         .from("customers")
         .select("*");
@@ -36,12 +36,15 @@ const AdminUsers = () => {
       }
       
       // Transform the data to ensure it matches our expected type
-      return authUsers.map(customer => ({
-        ...customer,
-        // Default values for potentially missing fields
+      return (authUsers || []).map(customer => ({
+        id: customer.id,
+        first_name: customer.first_name,
+        last_name: customer.last_name,
+        email: customer.email || null,
+        phone: customer.phone,
         is_admin: customer.is_admin || false,
-        email: customer.email || "No email available",
-      })) || [];
+        created_at: customer.created_at
+      }));
     },
   });
 
@@ -110,7 +113,7 @@ const AdminUsers = () => {
                           ? `${customer.first_name} ${customer.last_name}`
                           : "Not provided"}
                       </td>
-                      <td className="p-2">{customer.email}</td>
+                      <td className="p-2">{customer.email || "—"}</td>
                       <td className="p-2">{customer.phone || "—"}</td>
                       <td className="p-2">
                         {customer.created_at 

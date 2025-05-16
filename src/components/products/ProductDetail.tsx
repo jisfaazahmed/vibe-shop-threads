@@ -39,7 +39,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold">{product.name}</h1>
-            <p className="text-2xl font-bold mt-2">${product.price.toFixed(2)}</p>
+            <p className="text-2xl font-bold mt-2">LKR {product.price.toFixed(2)}</p>
           </div>
           
           <p className="text-gray-600">{product.description}</p>

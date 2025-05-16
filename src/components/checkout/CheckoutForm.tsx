@@ -20,10 +20,10 @@ const CheckoutForm = () => {
   const { getCartTotal, clearCart } = useCart();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("credit_card");
+  const [paymentMethod, setPaymentMethod] = useState("cod");
 
   const subtotal = getCartTotal();
-  const shipping = subtotal > 100 ? 0 : 5.99;
+  const shipping = subtotal > 10000 ? 0 : 500; // Free shipping over LKR 10,000
   const tax = subtotal * 0.08;
   const total = subtotal + shipping + tax;
 
@@ -110,21 +110,21 @@ const CheckoutForm = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="city">City</Label>
-                    <Input id="city" placeholder="New York" required />
+                    <Input id="city" placeholder="Colombo" required />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="state">State</Label>
-                    <Input id="state" placeholder="NY" required />
+                    <Label htmlFor="state">Province</Label>
+                    <Input id="state" placeholder="Western" required />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="zip">ZIP Code</Label>
-                    <Input id="zip" placeholder="10001" required />
+                    <Label htmlFor="zip">Postal Code</Label>
+                    <Input id="zip" placeholder="10300" required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="country">Country</Label>
-                    <Input id="country" placeholder="United States" required />
+                    <Input id="country" placeholder="Sri Lanka" defaultValue="Sri Lanka" required />
                   </div>
                 </div>
               </CardContent>
@@ -137,19 +137,19 @@ const CheckoutForm = () => {
               </CardHeader>
               <CardContent className="space-y-6">
                 <RadioGroup 
-                  defaultValue="credit_card"
+                  defaultValue="cod"
                   onValueChange={setPaymentMethod}
                 >
+                  <div className="flex items-center space-x-2 border p-4 rounded-md">
+                    <RadioGroupItem value="cod" id="cod" />
+                    <Label htmlFor="cod" className="flex-1 cursor-pointer">
+                      Cash on Delivery (COD)
+                    </Label>
+                  </div>
                   <div className="flex items-center space-x-2 border p-4 rounded-md">
                     <RadioGroupItem value="credit_card" id="credit_card" />
                     <Label htmlFor="credit_card" className="flex-1 cursor-pointer">
                       Credit Card
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2 border p-4 rounded-md">
-                    <RadioGroupItem value="paypal" id="paypal" />
-                    <Label htmlFor="paypal" className="flex-1 cursor-pointer">
-                      PayPal
                     </Label>
                   </div>
                 </RadioGroup>
@@ -158,24 +158,24 @@ const CheckoutForm = () => {
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="cardName">Name on Card</Label>
-                      <Input id="cardName" placeholder="John Doe" required />
+                      <Input id="cardName" placeholder="John Doe" required={paymentMethod === "credit_card"} />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="cardNumber">Card Number</Label>
                       <Input 
                         id="cardNumber" 
                         placeholder="1234 5678 9012 3456" 
-                        required 
+                        required={paymentMethod === "credit_card"} 
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="expiration">Expiration (MM/YY)</Label>
-                        <Input id="expiration" placeholder="MM/YY" required />
+                        <Input id="expiration" placeholder="MM/YY" required={paymentMethod === "credit_card"} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="cvc">CVC</Label>
-                        <Input id="cvc" placeholder="123" required />
+                        <Input id="cvc" placeholder="123" required={paymentMethod === "credit_card"} />
                       </div>
                     </div>
                   </div>
@@ -189,7 +189,7 @@ const CheckoutForm = () => {
                 className="w-full bg-brand-purple hover:bg-brand-purple/90"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? "Processing..." : `Pay $${total.toFixed(2)}`}
+                {isSubmitting ? "Processing..." : `Pay LKR ${total.toFixed(2)}`}
               </Button>
             </div>
           </form>
@@ -210,21 +210,21 @@ const CheckoutForm = () => {
               <div className="space-y-4 pt-4">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span>${subtotal.toFixed(2)}</span>
+                  <span>LKR {subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Shipping</span>
                   <span>
-                    {shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}
+                    {shipping === 0 ? "Free" : `LKR ${shipping.toFixed(2)}`}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Tax</span>
-                  <span>${tax.toFixed(2)}</span>
+                  <span>LKR {tax.toFixed(2)}</span>
                 </div>
                 <div className="border-t pt-4 font-bold flex justify-between">
                   <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>LKR {total.toFixed(2)}</span>
                 </div>
               </div>
             </CardContent>
