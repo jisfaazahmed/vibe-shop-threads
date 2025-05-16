@@ -12,6 +12,7 @@ const OrderConfirmationPage = () => {
   const orderNumber = orderData.orderNumber || Math.floor(100000 + Math.random() * 900000);
   const orderId = orderData.orderId || "unknown";
   const email = orderData.email || "customer@example.com";
+  const paymentMethod = orderData.paymentMethod === "credit_card" ? "Credit Card" : "Cash on Delivery";
 
   return (
     <MainLayout>
@@ -59,7 +60,7 @@ const OrderConfirmationPage = () => {
               </div>
               <div className="flex justify-between">
                 <span>Payment Method:</span>
-                <span>Cash on Delivery</span>
+                <span>{paymentMethod}</span>
               </div>
             </div>
           </div>

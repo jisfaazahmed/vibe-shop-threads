@@ -79,9 +79,9 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ userProfile, isProfileLoadi
     setIsSubmitting(true);
     
     try {
-      // Create the order record - update to handle RLS policy issues
+      // Create the order record - updated to fix RLS policy issues
       const orderData = {
-        customer_id: user?.id || null, // Will be null for guest checkout
+        customer_id: user?.id, // Don't use || null as it might convert empty string to null
         total_amount: total,
         shipping_address: address + (addressLine2 ? ", " + addressLine2 : ""),
         shipping_city: city,
@@ -117,7 +117,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ userProfile, isProfileLoadi
       
       // Update customer information if logged in
       if (user) {
-        await supabase
+        const { error: customerError } = await supabase
           .from('customers')
           .update({
             first_name: firstName,
@@ -131,6 +131,11 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ userProfile, isProfileLoadi
             country
           })
           .eq('id', user.id);
+          
+        if (customerError) {
+          console.error("Error updating customer information:", customerError);
+          // Continue with order confirmation even if customer update fails
+        }
       }
 
       // Success!

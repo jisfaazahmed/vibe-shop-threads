@@ -9,7 +9,7 @@ interface CartSummaryProps {
 
 const CartSummary: React.FC<CartSummaryProps> = ({ subtotal }) => {
   const navigate = useNavigate();
-  const shipping = subtotal > 100 ? 0 : 5.99;
+  const shipping = subtotal > 10000 ? 0 : 500; // Updated to LKR values
   const tax = subtotal * 0.08; // 8% tax
   const total = subtotal + shipping + tax;
 
@@ -20,25 +20,25 @@ const CartSummary: React.FC<CartSummaryProps> = ({ subtotal }) => {
       <div className="space-y-3 text-sm">
         <div className="flex justify-between">
           <span>Subtotal</span>
-          <span>${subtotal.toFixed(2)}</span>
+          <span>LKR {subtotal.toFixed(2)}</span>
         </div>
         
         <div className="flex justify-between">
           <span>Shipping</span>
           <span>
-            {shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}
-            {shipping === 0 && <span className="text-xs ml-1 text-green-600">(Orders over $100)</span>}
+            {shipping === 0 ? "Free" : `LKR ${shipping.toFixed(2)}`}
+            {shipping === 0 && <span className="text-xs ml-1 text-green-600">(Orders over LKR 10,000)</span>}
           </span>
         </div>
         
         <div className="flex justify-between">
           <span>Tax (estimated)</span>
-          <span>${tax.toFixed(2)}</span>
+          <span>LKR {tax.toFixed(2)}</span>
         </div>
         
         <div className="border-t pt-3 mt-3 font-semibold flex justify-between">
           <span>Total</span>
-          <span>${total.toFixed(2)}</span>
+          <span>LKR {total.toFixed(2)}</span>
         </div>
       </div>
       
