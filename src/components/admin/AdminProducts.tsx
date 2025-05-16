@@ -11,7 +11,8 @@ import { toast } from "@/components/ui/sonner";
 import { Plus, Edit, Trash2 } from "lucide-react";
 import ProductForm from "./ProductForm";
 
-type Product = {
+// Define a product type that matches the database schema
+type ProductFromDB = {
   id: string;
   name: string;
   description: string | null;
@@ -25,12 +26,12 @@ type Product = {
 
 const AdminProducts = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<ProductFromDB | null>(null);
   const queryClient = useQueryClient();
 
   const { data: products, isLoading } = useQuery({
     queryKey: ["adminProducts"],
-    queryFn: async (): Promise<Product[]> => {
+    queryFn: async (): Promise<ProductFromDB[]> => {
       const { data, error } = await supabase
         .from("products")
         .select("*")
@@ -54,7 +55,6 @@ const AdminProducts = () => {
       
       if (error) {
         toast({
-          variant: "destructive",
           title: "Deletion failed",
           description: error.message,
         });
@@ -145,7 +145,7 @@ const AdminProducts = () => {
                             {editingProduct && (
                               <ProductForm 
                                 productId={editingProduct.id}
-                                product={editingProduct}
+                                productData={editingProduct}
                                 onSuccess={() => {
                                   setEditingProduct(null);
                                   queryClient.invalidateQueries({ queryKey: ["adminProducts"] });

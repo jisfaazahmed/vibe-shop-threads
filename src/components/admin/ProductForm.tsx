@@ -3,7 +3,6 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Product } from "@/data/products";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,13 +13,24 @@ import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/comp
 import { useForm } from "react-hook-form";
 import { toast } from "@/components/ui/sonner";
 
+// Define the product data type from the database
+type ProductData = {
+  id?: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  price: number;
+  stock: number;
+  featured: boolean;
+};
+
 interface ProductFormProps {
   productId?: string;
-  product?: Product;
+  productData?: ProductData;
   onSuccess?: () => void;
 }
 
-const ProductForm: React.FC<ProductFormProps> = ({ productId, product, onSuccess }) => {
+const ProductForm: React.FC<ProductFormProps> = ({ productId, productData, onSuccess }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
@@ -52,16 +62,16 @@ const ProductForm: React.FC<ProductFormProps> = ({ productId, product, onSuccess
             setFeatured(data.featured || false);
           }
         });
-    } else if (product) {
-      // Use the provided product object
-      setName(product.name);
-      setDescription(product.description || "");
-      setCategory(product.category || "");
-      setPrice(product.price);
-      setStock(product.stock);
-      setFeatured(product.featured || false);
+    } else if (productData) {
+      // Use the provided product data
+      setName(productData.name);
+      setDescription(productData.description || "");
+      setCategory(productData.category || "");
+      setPrice(productData.price);
+      setStock(productData.stock);
+      setFeatured(productData.featured || false);
     }
-  }, [productId, product]);
+  }, [productId, productData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,7 +79,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ productId, product, onSuccess
 
     try {
       // Validate product data
-      if (!name || !price || !description || !category) {
+      if (!name || price === "" || !description || !category) {
         toast.error("Please fill in all required fields");
         setSubmitting(false);
         return;
@@ -115,8 +125,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ productId, product, onSuccess
         setName("");
         setDescription("");
         setCategory("");
-        setPrice(0);
-        setStock(0);
+        setPrice("");
+        setStock("");
         setFeatured(false);
       }
 
