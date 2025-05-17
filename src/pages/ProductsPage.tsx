@@ -28,6 +28,7 @@ type ProductImage = {
   url: string;
   alt_text: string | null;
   is_primary: boolean | null;
+  product_id: string;
 };
 
 type ProductVariant = {
@@ -36,6 +37,7 @@ type ProductVariant = {
   color_hex: string | null;
   size: string;
   stock: number;
+  product_id: string;
 };
 
 type Product = {

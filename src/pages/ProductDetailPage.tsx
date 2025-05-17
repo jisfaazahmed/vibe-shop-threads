@@ -3,15 +3,177 @@ import React from "react";
 import { useParams, Link } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
 import ProductDetail from "@/components/products/ProductDetail";
-import { products, reviewsData } from "@/data/products";
 import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+type ProductColor = {
+  name: string;
+  hex: string;
+};
+
+type Product = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  stock: number;
+  featured: boolean;
+  category: string;
+  images: string[];
+  colors: ProductColor[];
+  sizes: string[];
+  tags: string[];
+};
+
+// Review type definition for our database
+type DbProduct = {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  stock: number;
+  featured: boolean;
+  category: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type ProductImage = {
+  id: string;
+  url: string;
+  alt_text: string | null;
+  is_primary: boolean | null;
+  product_id: string;
+};
+
+type ProductVariant = {
+  id: string;
+  color: string;
+  color_hex: string | null;
+  size: string;
+  stock: number;
+  product_id: string;
+};
+
+type ProductReview = {
+  id: string;
+  title: string;
+  rating: number;
+  comment: string;
+  author: string;
+  date: string;
+  productId: string;
+};
 
 const ProductDetailPage = () => {
   const { id } = useParams<{ id: string }>();
-  const product = products.find((p) => p.id === id);
-  const productReviews = reviewsData.filter((r) => r.productId === id);
+  
+  const { data: product, isLoading, error } = useQuery({
+    queryKey: ["product", id],
+    queryFn: async (): Promise<Product | null> => {
+      if (!id) return null;
 
-  if (!product) {
+      // Fetch the product
+      const { data: productData, error: productError } = await supabase
+        .from("products")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (productError) {
+        console.error("Error fetching product:", productError);
+        return null;
+      }
+
+      // Fetch product images
+      const { data: imagesData, error: imagesError } = await supabase
+        .from("product_images")
+        .select("*")
+        .eq("product_id", id);
+
+      if (imagesError) {
+        console.error("Error fetching product images:", imagesError);
+        return null;
+      }
+
+      // Fetch product variants
+      const { data: variantsData, error: variantsError } = await supabase
+        .from("product_variants")
+        .select("*")
+        .eq("product_id", id);
+
+      if (variantsError) {
+        console.error("Error fetching product variants:", variantsError);
+        return null;
+      }
+
+      // Extract unique colors from variants
+      const uniqueColors = Array.from(
+        new Set(variantsData.map((variant: ProductVariant) => variant.color))
+      ).map(colorName => {
+        const variant = variantsData.find((v: ProductVariant) => v.color === colorName);
+        return {
+          name: colorName,
+          hex: variant?.color_hex || '#000000'
+        };
+      });
+      
+      // Extract unique sizes from variants
+      const uniqueSizes = Array.from(
+        new Set(variantsData.map((variant: ProductVariant) => variant.size))
+      );
+
+      // Map data to our Product type
+      return {
+        id: productData.id,
+        name: productData.name,
+        description: productData.description || "",
+        price: productData.price,
+        stock: productData.stock,
+        featured: productData.featured || false,
+        category: productData.category || "Uncategorized",
+        images: imagesData.map((img: ProductImage) => img.url),
+        colors: uniqueColors,
+        sizes: uniqueSizes,
+        tags: productData.category ? [productData.category] : []
+      };
+    }
+  });
+
+  // Hardcoded reviews data for now
+  const productReviews: ProductReview[] = [
+    {
+      id: "1",
+      title: "Great product!",
+      rating: 5,
+      comment: "This is an amazing product. I love it and would recommend it to anyone!",
+      author: "John Doe",
+      date: "2025-04-01",
+      productId: id || ""
+    },
+    {
+      id: "2",
+      title: "Good quality",
+      rating: 4,
+      comment: "Good quality product, very comfortable and stylish.",
+      author: "Jane Smith",
+      date: "2025-03-25",
+      productId: id || ""
+    }
+  ];
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="container mx-auto px-4 py-16 flex justify-center">
+          <div className="w-8 h-8 border-4 border-t-brand-purple rounded-full animate-spin"></div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (error || !product) {
     return (
       <MainLayout>
         <div className="container mx-auto px-4 py-16 text-center">
@@ -74,8 +236,6 @@ const ProductDetailPage = () => {
           </div>
         )}
       </section>
-      
-      {/* Related Products would go here in a real application */}
     </MainLayout>
   );
 };

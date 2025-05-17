@@ -16,8 +16,8 @@ import { Pencil, Eye } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
 type CustomerInfo = {
-  first_name: string;
-  last_name: string;
+  first_name: string | null;
+  last_name: string | null;
   email?: string | null;
   phone?: string | null;
 };
@@ -90,7 +90,7 @@ const AdminOrders = () => {
             if (order.customer_id) {
               const { data: customerData, error: customerError } = await supabase
                 .from("customers")
-                .select("first_name, last_name, email, phone")
+                .select("first_name, last_name")
                 .eq("id", order.customer_id)
                 .single();
 
@@ -98,8 +98,8 @@ const AdminOrders = () => {
                 customerInfo = {
                   first_name: customerData.first_name || "Guest",
                   last_name: customerData.last_name || "User",
-                  email: customerData.email || null,
-                  phone: customerData.phone || null
+                  email: null,
+                  phone: null
                 };
               } else {
                 console.error("Error fetching customer:", customerError);
