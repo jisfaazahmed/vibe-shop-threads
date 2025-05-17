@@ -79,6 +79,7 @@ const AdminOrders = () => {
         // Then fetch customer info for each order
         const ordersWithCustomers = await Promise.all(
           ordersData.map(async (order) => {
+            // Default customer info in case we can't fetch it
             let customerInfo: CustomerInfo = { 
               first_name: "Guest", 
               last_name: "User",
@@ -94,7 +95,14 @@ const AdminOrders = () => {
                 .single();
 
               if (!customerError && customerData) {
-                customerInfo = customerData as CustomerInfo;
+                customerInfo = {
+                  first_name: customerData.first_name || "Guest",
+                  last_name: customerData.last_name || "User",
+                  email: customerData.email || null,
+                  phone: customerData.phone || null
+                };
+              } else {
+                console.error("Error fetching customer:", customerError);
               }
             }
 

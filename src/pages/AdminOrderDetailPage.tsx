@@ -1,23 +1,30 @@
 
-import React from "react";
+import React, { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import MainLayout from "@/components/layout/MainLayout";
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "@/components/ui/sonner";
 import { format } from "date-fns";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Printer } from "lucide-react";
 
-// Define better types for the order and customer
 type CustomerInfo = {
   first_name: string;
   last_name: string;
@@ -27,10 +34,13 @@ type CustomerInfo = {
 
 type OrderItem = {
   id: string;
+  order_id: string;
   product_id: string;
+  variant_id: string;
   quantity: number;
   price: number;
-  product?: {
+  created_at: string;
+  product: {
     name: string;
   };
 };
@@ -47,6 +57,7 @@ type Order = {
   shipping_postal_code: string;
   shipping_country: string;
   payment_method: string | null;
+  updated_at: string;
   items: OrderItem[];
   customer: CustomerInfo;
 };
@@ -54,12 +65,16 @@ type Order = {
 const AdminOrderDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [status, setStatus] = useState<string>("");
+  const queryClient = useQueryClient();
 
   const { data: order, isLoading } = useQuery({
     queryKey: ["adminOrder", id],
-    queryFn: async () => {
+    queryFn: async (): Promise<Order | null> => {
       try {
-        // Get the order with its items
+        if (!id) return null;
+
+        // Fetch order data
         const { data: orderData, error: orderError } = await supabase
           .from("orders")
           .select(`
@@ -77,40 +92,81 @@ const AdminOrderDetailPage = () => {
           throw orderError;
         }
 
-        // Get customer info if available
-        let customerData: CustomerInfo = { 
-          first_name: "Guest", 
+        // Default customer info
+        let customerInfo: CustomerInfo = {
+          first_name: "Guest",
           last_name: "User",
           email: null,
-          phone: null
+          phone: null,
         };
-        
+
+        // Fetch customer data if available
         if (orderData.customer_id) {
-          const { data: customer, error: customerError } = await supabase
+          const { data: customerData, error: customerError } = await supabase
             .from("customers")
-            .select("first_name, last_name, phone, email")
+            .select("first_name, last_name, email, phone")
             .eq("id", orderData.customer_id)
             .single();
 
-          if (!customerError && customer) {
-            customerData = customer;
+          if (!customerError && customerData) {
+            customerInfo = {
+              first_name: customerData.first_name || "Guest",
+              last_name: customerData.last_name || "User",
+              email: customerData.email || null,
+              phone: customerData.phone || null,
+            };
+          } else {
+            console.error("Error fetching customer:", customerError);
           }
         }
 
+        setStatus(orderData.status);
+
         return {
           ...orderData,
-          customer: customerData,
+          customer: customerInfo,
         } as Order;
       } catch (error) {
-        console.error("Error in order detail query:", error);
+        console.error("Error in adminOrder query:", error);
         throw error;
       }
     },
-    enabled: !!id,
   });
 
+  const updateOrderStatus = useMutation({
+    mutationFn: async (newStatus: string) => {
+      const { data, error } = await supabase
+        .from("orders")
+        .update({ status: newStatus })
+        .eq("id", id);
+
+      if (error) {
+        throw error;
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminOrder", id] });
+      queryClient.invalidateQueries({ queryKey: ["adminOrders"] });
+      toast.success("Order status updated successfully");
+    },
+    onError: (error) => {
+      console.error("Error updating order status:", error);
+      toast.error("Failed to update order status");
+    },
+  });
+
+  const handleStatusChange = (newStatus: string) => {
+    setStatus(newStatus);
+    updateOrderStatus.mutate(newStatus);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
+    switch (status.toLowerCase()) {
       case "completed":
         return "bg-green-100 text-green-800";
       case "processing":
@@ -127,8 +183,10 @@ const AdminOrderDetailPage = () => {
   if (isLoading) {
     return (
       <MainLayout>
-        <div className="container mx-auto px-4 py-10 flex justify-center">
-          <div className="w-8 h-8 border-4 border-t-brand-purple rounded-full animate-spin"></div>
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex justify-center py-10">
+            <div className="w-8 h-8 border-4 border-t-brand-purple rounded-full animate-spin"></div>
+          </div>
         </div>
       </MainLayout>
     );
@@ -137,12 +195,17 @@ const AdminOrderDetailPage = () => {
   if (!order) {
     return (
       <MainLayout>
-        <div className="container mx-auto px-4 py-10">
+        <div className="container mx-auto px-4 py-8">
           <Card>
             <CardContent className="pt-6">
-              <div className="text-center py-10">
-                <p className="text-xl font-medium mb-4">Order not found</p>
-                <Button onClick={() => navigate("/admin")}>Back to Admin</Button>
+              <div className="text-center py-8">
+                <h2 className="text-2xl font-bold mb-2">Order not found</h2>
+                <p className="text-gray-600 mb-4">
+                  The order you're looking for doesn't exist or has been removed.
+                </p>
+                <Button onClick={() => navigate("/admin/orders")}>
+                  Back to Orders
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -153,152 +216,144 @@ const AdminOrderDetailPage = () => {
 
   return (
     <MainLayout>
-      <div className="container mx-auto px-4 py-10">
-        <div className="mb-6 flex items-center">
+      <div className="container mx-auto px-4 py-8">
+        {/* Back button and print */}
+        <div className="flex justify-between mb-6">
           <Button
             variant="outline"
-            size="sm"
-            onClick={() => navigate("/admin")}
-            className="mr-4"
+            onClick={() => navigate("/admin/orders")}
+            className="flex items-center gap-2"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Admin
+            <ArrowLeft size={16} /> Back to Orders
           </Button>
-          <h1 className="text-3xl font-bold">Order Details</h1>
+          <Button
+            variant="outline"
+            onClick={handlePrint}
+            className="flex items-center gap-2"
+          >
+            <Printer size={16} /> Print Order
+          </Button>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          <div className="md:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Order #{order.id.substring(0, 8)}</CardTitle>
-                <CardDescription>
-                  Placed on{" "}
-                  {format(new Date(order.created_at), "MMMM d, yyyy 'at' h:mm a")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap justify-between items-center mb-6">
-                  <div>
-                    <p className="text-sm text-gray-500">Status</p>
-                    <Badge
-                      className={`font-medium ${getStatusColor(order.status)}`}
-                      variant="outline"
-                    >
-                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Payment Method</p>
-                    <p className="font-medium">
-                      {order.payment_method === "cod"
-                        ? "Cash on Delivery"
-                        : order.payment_method}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Total Amount</p>
-                    <p className="font-medium">LKR {order.total_amount.toFixed(2)}</p>
-                  </div>
-                </div>
-
-                <div className="border-t pt-4 mb-6">
-                  <h3 className="font-semibold mb-2">Order Items</h3>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    {order.items && order.items.length > 0 ? (
-                      <table className="w-full text-sm">
-                        <thead className="text-left border-b">
-                          <tr>
-                            <th className="pb-2">Item</th>
-                            <th className="pb-2">Quantity</th>
-                            <th className="pb-2 text-right">Price</th>
-                            <th className="pb-2 text-right">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {order.items.map((item) => (
-                            <tr key={item.id} className="border-b last:border-b-0">
-                              <td className="py-3">
-                                {item.product?.name || "Unknown Product"}
-                              </td>
-                              <td className="py-3">{item.quantity}</td>
-                              <td className="py-3 text-right">
-                                LKR {item.price.toFixed(2)}
-                              </td>
-                              <td className="py-3 text-right">
-                                LKR {(item.price * item.quantity).toFixed(2)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    ) : (
-                      <p>No items found for this order</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <div className="w-72">
-                    <div className="flex justify-between py-1">
-                      <span>Subtotal</span>
-                      <span>
-                        LKR{" "}
-                        {order.items
-                          ?.reduce((sum, item) => sum + item.price * item.quantity, 0)
-                          .toFixed(2) || "0.00"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between py-1">
-                      <span>Shipping</span>
-                      <span>
-                        {order.total_amount > 10000 ? "Free" : "LKR 500.00"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between py-1">
-                      <span>Tax</span>
-                      <span>Included</span>
-                    </div>
-                    <div className="flex justify-between py-2 font-bold border-t mt-2">
-                      <span>Total</span>
-                      <span>LKR {order.total_amount.toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-end space-x-2">
-                <Button variant="outline">Update Status</Button>
-              </CardFooter>
-            </Card>
-          </div>
-
-          <div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Customer Information</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="mb-6">
-                  <p className="font-semibold mb-1">Contact Information</p>
-                  <p>
+        {/* Order Details */}
+        <Card className="mb-6">
+          <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
+            <div>
+              <CardTitle>Order #{order.id.substring(0, 8)}</CardTitle>
+              <CardDescription>
+                Placed on {format(new Date(order.created_at), "PPP")}
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium">Status:</span>
+              <Select value={status} onValueChange={handleStatusChange}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="processing">Processing</SelectItem>
+                  <SelectItem value="shipped">Shipped</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-6">
+            {/* Customer and Shipping */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="font-medium text-lg mb-2">Customer Information</h3>
+                <div className="bg-gray-50 p-4 rounded-md">
+                  <p className="font-medium">
                     {order.customer.first_name} {order.customer.last_name}
                   </p>
-                  <p>{order.customer.email || "Email not provided"}</p>
-                  <p>{order.customer.phone || "Phone not provided"}</p>
+                  {order.customer.email && <p>{order.customer.email}</p>}
+                  {order.customer.phone && <p>{order.customer.phone}</p>}
                 </div>
-                <div>
-                  <p className="font-semibold mb-1">Shipping Address</p>
+              </div>
+              <div>
+                <h3 className="font-medium text-lg mb-2">Shipping Address</h3>
+                <div className="bg-gray-50 p-4 rounded-md">
                   <p>{order.shipping_address}</p>
                   <p>
-                    {order.shipping_city}, {order.shipping_state}
+                    {order.shipping_city}, {order.shipping_state}{" "}
+                    {order.shipping_postal_code}
                   </p>
-                  <p>{order.shipping_postal_code}</p>
                   <p>{order.shipping_country}</p>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+              </div>
+            </div>
+
+            <Separator className="my-6" />
+
+            {/* Order Items */}
+            <h3 className="font-medium text-lg mb-4">Order Items</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2">Product</th>
+                    <th className="text-center py-2">Quantity</th>
+                    <th className="text-right py-2">Price</th>
+                    <th className="text-right py-2">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {order.items && order.items.length > 0 ? (
+                    order.items.map((item) => (
+                      <tr key={item.id} className="border-b">
+                        <td className="py-3">
+                          {item.product?.name || "Unknown Product"}
+                        </td>
+                        <td className="text-center py-3">{item.quantity}</td>
+                        <td className="text-right py-3">
+                          LKR {item.price.toFixed(2)}
+                        </td>
+                        <td className="text-right py-3">
+                          LKR {(item.price * item.quantity).toFixed(2)}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="text-center py-4">
+                        No items found for this order
+                      </td>
+                    </tr>
+                  )}
+                  <tr>
+                    <td colSpan={2} className="py-3"></td>
+                    <td className="text-right py-3 font-medium">Order Total:</td>
+                    <td className="text-right py-3 font-bold">
+                      LKR {order.total_amount.toFixed(2)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <Separator className="my-6" />
+
+            {/* Payment Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="font-medium text-lg mb-2">Payment Method</h3>
+                <p>{order.payment_method || "Not specified"}</p>
+              </div>
+              <div>
+                <h3 className="font-medium text-lg mb-2">Order Status</h3>
+                <Badge
+                  className={`${getStatusColor(order.status)} px-3 py-1`}
+                  variant="outline"
+                >
+                  {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                </Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </MainLayout>
   );
