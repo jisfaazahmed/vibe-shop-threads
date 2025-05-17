@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Pencil, Eye } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 type Order = {
   id: string;
@@ -47,58 +47,65 @@ type Order = {
 };
 
 const AdminOrders = () => {
+  const navigate = useNavigate();
+  
   const { data: orders, isLoading } = useQuery({
     queryKey: ["adminOrders"],
     queryFn: async (): Promise<Order[]> => {
-      // First get orders with their items
-      const { data: ordersData, error: ordersError } = await supabase
-        .from("orders")
-        .select(`
-          *,
-          items:order_items(
+      try {
+        // First get orders with their items
+        const { data: ordersData, error: ordersError } = await supabase
+          .from("orders")
+          .select(`
             *,
-            product:products(name)
-          )
-        `)
-        .order("created_at", { ascending: false });
+            items:order_items(
+              *,
+              product:products(name)
+            )
+          `)
+          .order("created_at", { ascending: false });
 
-      if (ordersError) {
-        console.error("Error fetching orders:", ordersError);
-        throw ordersError;
+        if (ordersError) {
+          console.error("Error fetching orders:", ordersError);
+          throw ordersError;
+        }
+
+        // Then fetch customer info for each order
+        const ordersWithCustomers = await Promise.all(
+          ordersData.map(async (order) => {
+            if (!order.customer_id) {
+              return {
+                ...order,
+                customer: { first_name: "Guest", last_name: "User" },
+              };
+            }
+
+            const { data: customerData, error: customerError } = await supabase
+              .from("customers")
+              .select("first_name, last_name")
+              .eq("id", order.customer_id)
+              .single();
+
+            if (customerError || !customerData) {
+              console.error("Error fetching customer:", customerError);
+              return {
+                ...order,
+                customer: { first_name: "Unknown", last_name: "User" },
+              };
+            }
+
+            return {
+              ...order,
+              customer: customerData,
+            };
+          })
+        );
+
+        return ordersWithCustomers;
+      } catch (error) {
+        console.error("Error in adminOrders query:", error);
+        throw error;
       }
-
-      // Then fetch customer info for each order
-      const ordersWithCustomers = await Promise.all(
-        ordersData.map(async (order) => {
-          if (!order.customer_id) {
-            return {
-              ...order,
-              customer: { first_name: "Guest", last_name: "User" },
-            };
-          }
-
-          const { data: customerData, error: customerError } = await supabase
-            .from("customers")
-            .select("first_name, last_name")
-            .eq("id", order.customer_id)
-            .single();
-
-          if (customerError || !customerData) {
-            console.error("Error fetching customer:", customerError);
-            return {
-              ...order,
-              customer: { first_name: "Unknown", last_name: "User" },
-            };
-          }
-
-          return {
-            ...order,
-            customer: customerData,
-          };
-        })
-      );
-
-      return ordersWithCustomers;
     },
   });
 
@@ -115,6 +122,10 @@ const AdminOrders = () => {
       default:
         return "bg-gray-100 text-gray-800";
     }
+  };
+
+  const handleViewOrder = (orderId: string) => {
+    navigate(`/admin/orders/${orderId}`);
   };
 
   if (isLoading) {
@@ -175,19 +186,21 @@ const AdminOrders = () => {
                 <div className="border-t pt-4">
                   <p className="text-sm font-medium mb-2">Items:</p>
                   <ul className="text-sm text-gray-600 space-y-1">
-                    {order.items.map((item) => (
-                      <li key={item.id}>
-                        {item.product?.name || "Unknown Product"} x {item.quantity} - LKR{" "}
-                        {item.price.toFixed(2)}
-                      </li>
-                    ))}
+                    {order.items && order.items.length > 0 ? (
+                      order.items.map((item) => (
+                        <li key={item.id}>
+                          {item.product?.name || "Unknown Product"} x {item.quantity} - LKR{" "}
+                          {item.price.toFixed(2)}
+                        </li>
+                      ))
+                    ) : (
+                      <li>No items found for this order</li>
+                    )}
                   </ul>
                 </div>
                 <div className="flex justify-end gap-2 mt-4">
-                  <Button variant="outline" size="sm" asChild>
-                    <Link to={`/admin/orders/${order.id}`}>
-                      <Eye className="mr-1 h-4 w-4" /> View
-                    </Link>
+                  <Button variant="outline" size="sm" onClick={() => handleViewOrder(order.id)}>
+                    <Eye className="mr-1 h-4 w-4" /> View
                   </Button>
                   <Button variant="outline" size="sm">
                     <Pencil className="mr-1 h-4 w-4" /> Edit

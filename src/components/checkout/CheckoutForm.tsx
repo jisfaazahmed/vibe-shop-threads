@@ -81,9 +81,14 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ userProfile, isProfileLoadi
     try {
       console.log("Cart items for order:", cartItems);
       
+      // Check for user authentication
+      if (!user && !email) {
+        throw new Error("Email is required for guest checkout");
+      }
+      
       // Create the order record
       const orderData = {
-        customer_id: user?.id, // Don't use || null as it might convert empty string to null
+        customer_id: user?.id || null, // Ensure null if no user
         total_amount: total,
         shipping_address: address + (addressLine2 ? ", " + addressLine2 : ""),
         shipping_city: city,
@@ -111,10 +116,23 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ userProfile, isProfileLoadi
 
       console.log("Order created:", createdOrder);
       
-      // Add order items - ensure product IDs are properly formatted as UUID strings
+      // Generate UUID for product_id if it's not already a UUID
+      const generateUuidIfNeeded = (id: string | number): string => {
+        // Check if the ID is already a UUID (simple check for UUID format)
+        const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (typeof id === 'string' && uuidPattern.test(id)) {
+          return id;
+        }
+        
+        // For demo purposes, create a deterministic UUID based on the ID
+        // In a production app, you would fetch actual UUIDs from your database
+        return `00000000-0000-0000-0000-${id.toString().padStart(12, '0')}`;
+      };
+      
+      // Add order items with proper UUID formatting
       const orderItems = cartItems.map(item => ({
         order_id: createdOrder.id,
-        product_id: String(item.product.id), // Convert to string in case it's a number
+        product_id: generateUuidIfNeeded(item.product.id),
         quantity: item.quantity,
         price: item.price || item.product.price,
         variant_id: item.variantId || null
