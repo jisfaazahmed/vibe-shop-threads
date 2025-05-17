@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "@/context/CartContext";
@@ -116,30 +115,23 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ userProfile, isProfileLoadi
 
       console.log("Order created:", createdOrder);
       
-      // Generate UUID for product_id if it's not already a UUID
-      const generateUuidIfNeeded = (id: string | number): string => {
-        // Check if the ID is already a UUID (simple check for UUID format)
-        const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (typeof id === 'string' && uuidPattern.test(id)) {
-          return id;
-        }
+      // Create order items with proper format
+      const orderItems = cartItems.map(item => {
+        // Ensure we have a valid product ID
+        const productId = typeof item.product.id === 'string' ? item.product.id : String(item.product.id);
         
-        // For demo purposes, create a deterministic UUID based on the ID
-        // In a production app, you would fetch actual UUIDs from your database
-        return `00000000-0000-0000-0000-${id.toString().padStart(12, '0')}`;
-      };
-      
-      // Add order items with proper UUID formatting
-      const orderItems = cartItems.map(item => ({
-        order_id: createdOrder.id,
-        product_id: generateUuidIfNeeded(item.product.id),
-        quantity: item.quantity,
-        price: item.price || item.product.price,
-        variant_id: item.variantId || null
-      }));
+        return {
+          order_id: createdOrder.id,
+          product_id: productId, 
+          quantity: item.quantity,
+          price: item.product.price,
+          variant_id: null // We'll leave this null for now
+        };
+      });
       
       console.log("Order items being inserted:", orderItems);
       
+      // Insert order items into the database
       const { error: itemsError } = await supabase
         .from('order_items')
         .insert(orderItems);

@@ -33,6 +33,11 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   
   const [quantity, setQuantity] = useState(1);
 
+  // Ensure product has images array with at least one item
+  const productImages = product.images && product.images.length > 0 
+    ? product.images 
+    : ["https://placehold.co/600x600/CCCCCC/333333?text=Image+Not+Available"];
+
   const handleAddToCart = () => {
     addToCart(product, quantity, selectedSize, selectedColor);
   };
@@ -41,7 +46,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
     <div className="container mx-auto px-4 py-10">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
         {/* Product Images */}
-        <ProductGallery images={product.images} name={product.name} />
+        <ProductGallery images={productImages} name={product.name} />
 
         {/* Product Info */}
         <div className="space-y-6">
