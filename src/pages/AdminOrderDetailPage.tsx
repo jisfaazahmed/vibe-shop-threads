@@ -17,6 +17,40 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ArrowLeft } from "lucide-react";
 
+// Define better types for the order and customer
+type CustomerInfo = {
+  first_name: string;
+  last_name: string;
+  email?: string | null;
+  phone?: string | null;
+};
+
+type OrderItem = {
+  id: string;
+  product_id: string;
+  quantity: number;
+  price: number;
+  product?: {
+    name: string;
+  };
+};
+
+type Order = {
+  id: string;
+  created_at: string;
+  status: string;
+  total_amount: number;
+  customer_id: string | null;
+  shipping_address: string;
+  shipping_city: string;
+  shipping_state: string;
+  shipping_postal_code: string;
+  shipping_country: string;
+  payment_method: string | null;
+  items: OrderItem[];
+  customer: CustomerInfo;
+};
+
 const AdminOrderDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -44,7 +78,13 @@ const AdminOrderDetailPage = () => {
         }
 
         // Get customer info if available
-        let customerData = { first_name: "Guest", last_name: "User" };
+        let customerData: CustomerInfo = { 
+          first_name: "Guest", 
+          last_name: "User",
+          email: null,
+          phone: null
+        };
+        
         if (orderData.customer_id) {
           const { data: customer, error: customerError } = await supabase
             .from("customers")
@@ -60,7 +100,7 @@ const AdminOrderDetailPage = () => {
         return {
           ...orderData,
           customer: customerData,
-        };
+        } as Order;
       } catch (error) {
         console.error("Error in order detail query:", error);
         throw error;
@@ -243,8 +283,8 @@ const AdminOrderDetailPage = () => {
                   <p>
                     {order.customer.first_name} {order.customer.last_name}
                   </p>
-                  <p>{order.customer.email}</p>
-                  <p>{order.customer.phone}</p>
+                  <p>{order.customer.email || "Email not provided"}</p>
+                  <p>{order.customer.phone || "Phone not provided"}</p>
                 </div>
                 <div>
                   <p className="font-semibold mb-1">Shipping Address</p>

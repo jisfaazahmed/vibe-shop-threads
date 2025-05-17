@@ -15,35 +15,41 @@ import { Button } from "@/components/ui/button";
 import { Pencil, Eye } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
+type CustomerInfo = {
+  first_name: string;
+  last_name: string;
+  email?: string | null;
+  phone?: string | null;
+};
+
+type OrderItem = {
+  id: string;
+  order_id: string;
+  product_id: string;
+  variant_id: string;
+  quantity: number;
+  price: number;
+  created_at: string;
+  product: {
+    name: string;
+  };
+};
+
 type Order = {
   id: string;
   created_at: string;
   status: string;
   total_amount: number;
-  customer_id: string;
+  customer_id: string | null;
   shipping_address: string;
   shipping_city: string;
   shipping_state: string;
   shipping_postal_code: string;
   shipping_country: string;
-  payment_method: string;
+  payment_method: string | null;
   updated_at: string;
-  items: {
-    id: string;
-    order_id: string;
-    product_id: string;
-    variant_id: string;
-    quantity: number;
-    price: number;
-    created_at: string;
-    product: {
-      name: string;
-    };
-  }[];
-  customer: {
-    first_name: string;
-    last_name: string;
-  };
+  items: OrderItem[];
+  customer: CustomerInfo;
 };
 
 const AdminOrders = () => {
@@ -73,35 +79,33 @@ const AdminOrders = () => {
         // Then fetch customer info for each order
         const ordersWithCustomers = await Promise.all(
           ordersData.map(async (order) => {
-            if (!order.customer_id) {
-              return {
-                ...order,
-                customer: { first_name: "Guest", last_name: "User" },
-              };
-            }
+            let customerInfo: CustomerInfo = { 
+              first_name: "Guest", 
+              last_name: "User",
+              email: null,
+              phone: null
+            };
 
-            const { data: customerData, error: customerError } = await supabase
-              .from("customers")
-              .select("first_name, last_name")
-              .eq("id", order.customer_id)
-              .single();
+            if (order.customer_id) {
+              const { data: customerData, error: customerError } = await supabase
+                .from("customers")
+                .select("first_name, last_name, email, phone")
+                .eq("id", order.customer_id)
+                .single();
 
-            if (customerError || !customerData) {
-              console.error("Error fetching customer:", customerError);
-              return {
-                ...order,
-                customer: { first_name: "Unknown", last_name: "User" },
-              };
+              if (!customerError && customerData) {
+                customerInfo = customerData as CustomerInfo;
+              }
             }
 
             return {
               ...order,
-              customer: customerData,
+              customer: customerInfo,
             };
           })
         );
 
-        return ordersWithCustomers;
+        return ordersWithCustomers as Order[];
       } catch (error) {
         console.error("Error in adminOrders query:", error);
         throw error;
