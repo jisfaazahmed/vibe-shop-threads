@@ -21,8 +21,16 @@ interface ProductDetailProps {
 
 const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   const { addToCart } = useCart();
-  const [selectedSize, setSelectedSize] = useState(product.sizes[0]);
-  const [selectedColor, setSelectedColor] = useState(product.colors[0]);
+  
+  // Make sure we're setting safe default values, even if arrays are empty
+  const [selectedSize, setSelectedSize] = useState(
+    product.sizes && product.sizes.length > 0 ? product.sizes[0] : ""
+  );
+  
+  const [selectedColor, setSelectedColor] = useState(
+    product.colors && product.colors.length > 0 ? product.colors[0] : { name: "", hex: "#000000" }
+  );
+  
   const [quantity, setQuantity] = useState(1);
 
   const handleAddToCart = () => {
@@ -44,70 +52,76 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
           
           <p className="text-gray-600">{product.description}</p>
           
-          {/* Color Selection */}
-          <div>
-            <h3 className="font-medium mb-2">Color: {selectedColor.name}</h3>
-            <RadioGroup 
-              defaultValue={selectedColor.name}
-              onValueChange={(value) => {
-                const color = product.colors.find(c => c.name === value);
-                if (color) setSelectedColor(color);
-              }}
-              className="flex items-center flex-wrap gap-3"
-            >
-              {product.colors.map((color) => (
-                <div key={color.name} className="flex items-center space-x-2">
-                  <RadioGroupItem
-                    value={color.name}
-                    id={`color-${color.name}`}
-                    className="sr-only"
-                  />
-                  <Label
-                    htmlFor={`color-${color.name}`}
-                    className={`w-8 h-8 rounded-full cursor-pointer flex items-center justify-center p-0.5 ${
-                      selectedColor.name === color.name ? "border-2 border-brand-purple" : ""
-                    }`}
-                  >
-                    <span
-                      className="w-full h-full rounded-full"
-                      style={{ backgroundColor: color.hex }}
-                      title={color.name}
+          {/* Color Selection - Only show if colors are available */}
+          {product.colors && product.colors.length > 0 && (
+            <div>
+              <h3 className="font-medium mb-2">
+                Color: {selectedColor ? selectedColor.name : ""}
+              </h3>
+              <RadioGroup 
+                defaultValue={selectedColor ? selectedColor.name : ""}
+                onValueChange={(value) => {
+                  const color = product.colors.find(c => c.name === value);
+                  if (color) setSelectedColor(color);
+                }}
+                className="flex items-center flex-wrap gap-3"
+              >
+                {product.colors.map((color) => (
+                  <div key={color.name} className="flex items-center space-x-2">
+                    <RadioGroupItem
+                      value={color.name}
+                      id={`color-${color.name}`}
+                      className="sr-only"
                     />
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
-          </div>
+                    <Label
+                      htmlFor={`color-${color.name}`}
+                      className={`w-8 h-8 rounded-full cursor-pointer flex items-center justify-center p-0.5 ${
+                        selectedColor && selectedColor.name === color.name ? "border-2 border-brand-purple" : ""
+                      }`}
+                    >
+                      <span
+                        className="w-full h-full rounded-full"
+                        style={{ backgroundColor: color.hex }}
+                        title={color.name}
+                      />
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+          )}
           
-          {/* Size Selection */}
-          <div>
-            <h3 className="font-medium mb-2">Size</h3>
-            <RadioGroup 
-              defaultValue={selectedSize}
-              onValueChange={setSelectedSize}
-              className="flex items-center gap-3"
-            >
-              {product.sizes.map((size) => (
-                <div key={size} className="flex items-center space-x-2">
-                  <RadioGroupItem
-                    value={size}
-                    id={`size-${size}`}
-                    className="sr-only"
-                  />
-                  <Label
-                    htmlFor={`size-${size}`}
-                    className={`w-10 h-10 rounded border flex items-center justify-center cursor-pointer transition ${
-                      selectedSize === size
-                        ? "bg-brand-purple text-white border-brand-purple"
-                        : "border-gray-300 hover:border-brand-purple"
-                    }`}
-                  >
-                    {size}
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
-          </div>
+          {/* Size Selection - Only show if sizes are available */}
+          {product.sizes && product.sizes.length > 0 && (
+            <div>
+              <h3 className="font-medium mb-2">Size</h3>
+              <RadioGroup 
+                defaultValue={selectedSize}
+                onValueChange={setSelectedSize}
+                className="flex items-center gap-3"
+              >
+                {product.sizes.map((size) => (
+                  <div key={size} className="flex items-center space-x-2">
+                    <RadioGroupItem
+                      value={size}
+                      id={`size-${size}`}
+                      className="sr-only"
+                    />
+                    <Label
+                      htmlFor={`size-${size}`}
+                      className={`w-10 h-10 rounded border flex items-center justify-center cursor-pointer transition ${
+                        selectedSize === size
+                          ? "bg-brand-purple text-white border-brand-purple"
+                          : "border-gray-300 hover:border-brand-purple"
+                      }`}
+                    >
+                      {size}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+          )}
           
           {/* Quantity and Add to Cart */}
           <div className="flex items-center gap-4 pt-4">
@@ -155,19 +169,21 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
               <span className="font-medium mr-2">Category:</span>
               <span>{product.category}</span>
             </div>
-            <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
-              <span className="font-medium">Tags:</span>
-              <div className="flex flex-wrap gap-1">
-                {product.tags.map((tag) => (
-                  <span 
-                    key={tag}
-                    className="bg-gray-100 px-2 py-1 rounded-full"
-                  >
-                    {tag}
-                  </span>
-                ))}
+            {product.tags && product.tags.length > 0 && (
+              <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
+                <span className="font-medium">Tags:</span>
+                <div className="flex flex-wrap gap-1">
+                  {product.tags.map((tag) => (
+                    <span 
+                      key={tag}
+                      className="bg-gray-100 px-2 py-1 rounded-full"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

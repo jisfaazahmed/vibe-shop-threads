@@ -6,6 +6,7 @@ import ProductDetail from "@/components/products/ProductDetail";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/sonner";
 
 type ProductColor = {
   name: string;
@@ -74,70 +75,80 @@ const ProductDetailPage = () => {
     queryFn: async (): Promise<Product | null> => {
       if (!id) return null;
 
-      // Fetch the product
-      const { data: productData, error: productError } = await supabase
-        .from("products")
-        .select("*")
-        .eq("id", id)
-        .single();
+      try {
+        // Fetch the product
+        const { data: productData, error: productError } = await supabase
+          .from("products")
+          .select("*")
+          .eq("id", id)
+          .single();
 
-      if (productError) {
-        console.error("Error fetching product:", productError);
-        return null;
-      }
+        if (productError) {
+          console.error("Error fetching product:", productError);
+          toast.error("Failed to load product details");
+          return null;
+        }
 
-      // Fetch product images
-      const { data: imagesData, error: imagesError } = await supabase
-        .from("product_images")
-        .select("*")
-        .eq("product_id", id);
+        if (!productData) {
+          toast.error("Product not found");
+          return null;
+        }
 
-      if (imagesError) {
-        console.error("Error fetching product images:", imagesError);
-        return null;
-      }
+        // Fetch product images
+        const { data: imagesData, error: imagesError } = await supabase
+          .from("product_images")
+          .select("*")
+          .eq("product_id", id);
 
-      // Fetch product variants
-      const { data: variantsData, error: variantsError } = await supabase
-        .from("product_variants")
-        .select("*")
-        .eq("product_id", id);
+        if (imagesError) {
+          console.error("Error fetching product images:", imagesError);
+        }
 
-      if (variantsError) {
-        console.error("Error fetching product variants:", variantsError);
-        return null;
-      }
+        // Fetch product variants
+        const { data: variantsData, error: variantsError } = await supabase
+          .from("product_variants")
+          .select("*")
+          .eq("product_id", id);
 
-      // Extract unique colors from variants
-      const uniqueColors = Array.from(
-        new Set(variantsData.map((variant: ProductVariant) => variant.color))
-      ).map(colorName => {
-        const variant = variantsData.find((v: ProductVariant) => v.color === colorName);
+        if (variantsError) {
+          console.error("Error fetching product variants:", variantsError);
+        }
+
+        // Extract unique colors from variants
+        const uniqueColors = Array.from(
+          new Set((variantsData || []).map((variant: ProductVariant) => variant.color))
+        ).map(colorName => {
+          const variant = (variantsData || []).find((v: ProductVariant) => v.color === colorName);
+          return {
+            name: colorName,
+            hex: variant?.color_hex || '#000000'
+          };
+        });
+        
+        // Extract unique sizes from variants
+        const uniqueSizes = Array.from(
+          new Set((variantsData || []).map((variant: ProductVariant) => variant.size))
+        );
+
+        // Map data to our Product type
         return {
-          name: colorName,
-          hex: variant?.color_hex || '#000000'
+          id: productData.id,
+          name: productData.name,
+          description: productData.description || "",
+          price: productData.price,
+          stock: productData.stock,
+          featured: productData.featured || false,
+          category: productData.category || "Uncategorized",
+          images: (imagesData || []).map((img: ProductImage) => img.url),
+          colors: uniqueColors,
+          sizes: uniqueSizes,
+          tags: productData.category ? [productData.category] : []
         };
-      });
-      
-      // Extract unique sizes from variants
-      const uniqueSizes = Array.from(
-        new Set(variantsData.map((variant: ProductVariant) => variant.size))
-      );
-
-      // Map data to our Product type
-      return {
-        id: productData.id,
-        name: productData.name,
-        description: productData.description || "",
-        price: productData.price,
-        stock: productData.stock,
-        featured: productData.featured || false,
-        category: productData.category || "Uncategorized",
-        images: imagesData.map((img: ProductImage) => img.url),
-        colors: uniqueColors,
-        sizes: uniqueSizes,
-        tags: productData.category ? [productData.category] : []
-      };
+      } catch (err) {
+        console.error("Unexpected error fetching product:", err);
+        toast.error("Something went wrong while loading the product");
+        return null;
+      }
     }
   });
 
@@ -178,7 +189,7 @@ const ProductDetailPage = () => {
       <MainLayout>
         <div className="container mx-auto px-4 py-16 text-center">
           <h1 className="text-2xl font-bold mb-4">Product not found</h1>
-          <p className="mb-8">The product you're looking for doesn't exist.</p>
+          <p className="mb-8">The product you're looking for doesn't exist or couldn't be loaded.</p>
           <Button asChild>
             <Link to="/products">Back to Products</Link>
           </Button>
